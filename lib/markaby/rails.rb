@@ -1,16 +1,3 @@
-module ActionView # :nodoc:
-  class Base # :nodoc:
-    def render_template(template_extension, template, file_path = nil, local_assigns = {})
-      if handler = @@template_handlers[template_extension]
-        template ||= read_template_file(file_path, template_extension)
-        handler.new(self).render(template, local_assigns, file_path)
-      else
-        compile_and_render_template(@@template_handlers[template_extension.to_sym], template, file_path, local_assigns)
-      end
-    end
-  end
-end
-
 module Markaby
   module Rails
     # Markaby helpers for Rails.
@@ -24,21 +11,16 @@ module Markaby
       end
     end
 
-    class ActionViewTemplateHandler # :nodoc:
-      def initialize(action_view)
-        @action_view = action_view
-      end
-      def render(template, local_assigns, file_path)
-        template = Template.new(template)
-        template.path = file_path
-        template.render(@action_view.assigns.merge(local_assigns), @action_view)
+    class ActionViewTemplateHandler < ActionView::TemplateHandler # :nodoc:
+      def render(template)
+        @markaby_template = Template.new(template.source)
+        @markaby_template.render(@view.assigns.merge(template.locals), @view)
       end
     end
       
     class Builder < Markaby::Builder # :nodoc:
       def initialize(*args, &block)
         super *args, &block
-        
         @assigns.each { |k, v| @helpers.instance_variable_set("@#{k}", v) }
       end
       
@@ -69,8 +51,6 @@ module Markaby
           eval("@content_for_#{name} = (@content_for_#{name} || '') + capture(&block)")
       end
     end
-
-
     
     Template.builder_class = Builder
     
@@ -88,3 +68,4 @@ module Markaby
 
   end
 end
+
